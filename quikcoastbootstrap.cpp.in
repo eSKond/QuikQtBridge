@@ -1,0 +1,6 @@
+#include <quikcoastbootstrap.h>
+
+int luaopen_@QuikQtPluginLib@(lua_State *l)
+{
+    return luaopenImp(l);
+}

@@ -1,0 +1,12 @@
+#ifndef QUIKQTBRIDGE_GLOBAL_H
+#define QUIKQTBRIDGE_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#if defined(QUIKQTBRIDGE_LIBRARY)
+#  define QUIKQTBRIDGE_EXPORT Q_DECL_EXPORT
+#else
+#  define QUIKQTBRIDGE_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // QUIKQTBRIDGE_GLOBAL_H

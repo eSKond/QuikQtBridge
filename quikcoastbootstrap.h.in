@@ -1,0 +1,11 @@
+#ifndef QUIKCOASTBOOTSTRAP_H
+#define QUIKCOASTBOOTSTRAP_H
+
+#include "QuikQtBridge_global.h"
+#include "quikcoast.h"
+
+extern "C" {
+QUIKQTBRIDGE_EXPORT int luaopen_@QuikQtPluginLib@(lua_State *l);
+}
+
+#endif // QUIKCOASTBOOTSTRAP_H
