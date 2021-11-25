@@ -13,10 +13,12 @@ public:
     QStringList getAllowedIPs(){return allowedIPs;}
     QHostAddress getHost(){return host;}
     int getPort(){return port;}
+    QString getLogPathPrefix(){return logPathPrefix;}
 private:
     QStringList allowedIPs;
     QHostAddress host;
     int port;
+    QString logPathPrefix;
 };
 
 #endif // SERVERCONFIGREADER_H

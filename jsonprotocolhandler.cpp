@@ -1,9 +1,20 @@
 #include "jsonprotocolhandler.h"
 #include <QTimer>
 
-JsonProtocolHandler::JsonProtocolHandler(QTcpSocket *sock, QObject *parent)
-    : QObject(parent)//, win1251(QTextCodec::codecForName("Windows-1251"))
+JsonProtocolHandler::JsonProtocolHandler(QTcpSocket *sock,  QString logFileName, QObject *parent)
+    : QObject(parent), logf(0), logts(0)//, win1251(QTextCodec::codecForName("Windows-1251"))
 {
+    if(!logFileName.isEmpty())
+    {
+        QFile *tmpf=new QFile(logFileName);
+        if(tmpf->open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            logf=tmpf;
+            logts=new QTextStream(logf);
+        }
+        else
+            delete tmpf;
+    }
     socket=sock;
     //socket->setParent(this);
     peerEnded=false;
@@ -15,7 +26,7 @@ JsonProtocolHandler::JsonProtocolHandler(QTcpSocket *sock, QObject *parent)
 
 void JsonProtocolHandler::forceDisconnect()
 {
-    emit debugLog("JsonProtocolHandler::forceDisconnect");
+    qDebug() << ("JsonProtocolHandler::forceDisconnect");
     end(true);
     disconnected();
 }
@@ -79,12 +90,13 @@ void JsonProtocolHandler::sendReq(int id, QJsonValue data, bool showInLog)
     QByteArray msg = jdoc.toJson(QJsonDocument::Compact);
     if(showInLog)
     {
-        emit debugLog(QString("Send req[%1]:").arg(id) + QString::fromLocal8Bit(msg));
+        qDebug() << (QString("Send req[%1]:").arg(id) + QString::fromLocal8Bit(msg));
     }
+    logOutgoing(msg);
 
     socket->write(msg);
     socket->flush();
-    emit debugLog("Sent");
+    qDebug() << "Sent";
 }
 
 void JsonProtocolHandler::sendAns(int id, QJsonValue data, bool showInLog)
@@ -106,12 +118,13 @@ void JsonProtocolHandler::sendAns(int id, QJsonValue data, bool showInLog)
     QByteArray msg = jdoc.toJson(QJsonDocument::Compact);
     if(showInLog)
     {
-        emit debugLog(QString("Send ans[%1]:").arg(id) + QString::fromLocal8Bit(msg));
+        qDebug() << (QString("Send ans[%1]:").arg(id) + QString::fromLocal8Bit(msg));
     }
+    logOutgoing(msg);
 
     socket->write(msg);
     socket->flush();
-    emit debugLog("Sent");
+    qDebug() << ("Sent");
 }
 
 void JsonProtocolHandler::sendVer(int ver)
@@ -132,11 +145,12 @@ void JsonProtocolHandler::sendVer(int ver)
     QJsonDocument jdoc(jobj);
     QByteArray msg = jdoc.toJson(QJsonDocument::Compact);
 
-    emit debugLog(QString("Send ver[%1]:").arg(ver) + QString::fromLocal8Bit(msg));
+    qDebug() << (QString("Send ver[%1]:").arg(ver) + QString::fromLocal8Bit(msg));
+    logOutgoing(msg);
 
     socket->write(msg);
     socket->flush();
-    emit debugLog("Sent");
+    qDebug() << ("Sent");
 }
 
 void JsonProtocolHandler::end(bool force)
@@ -156,10 +170,11 @@ void JsonProtocolHandler::end(bool force)
     QJsonDocument jdoc(jobj);
     QByteArray msg = jdoc.toJson(QJsonDocument::Compact);
 
-    emit debugLog("send END");
+    logOutgoing(msg);
+    qDebug() << ("send END");
     socket->write(msg);
     socket->flush();
-    emit debugLog("Sent");
+    qDebug() << ("Sent");
     weEnded=true;
     if(peerEnded)
         socket->disconnectFromHost();
@@ -179,7 +194,7 @@ void JsonProtocolHandler::processBuffer()
             {
                 QByteArray trash = incommingBuf.left(i);
                 incommingBuf = incommingBuf.mid(i);
-                emit debugLog("Malformed request");
+                qDebug() << ("Malformed request");
                 emit parseError(trash);
                 i=0;
             }
@@ -224,12 +239,12 @@ void JsonProtocolHandler::processBuffer()
                     QJsonDocument jdoc = QJsonDocument::fromJson(pdoc);
                     if(jdoc.isNull() || !jdoc.isObject())
                     {
-                        emit debugLog("Malformed request");
+                        qDebug() << ("Malformed request");
                         emit parseError(pdoc);
                     }
                     else
                     {
-                        emit debugLog(QString("Received:") + QString::fromLocal8Bit(pdoc));
+                        qDebug() << (QString("Received:") + QString::fromLocal8Bit(pdoc));
                         QJsonObject jobj = jdoc.object();
                         if(jobj.contains("id") && jobj.contains("type"))
                         {
@@ -300,6 +315,24 @@ bool JsonProtocolHandler::socketValid()
     return true;
 }
 
+void JsonProtocolHandler::logIncoming(const QByteArray &msg)
+{
+    if(!logts)
+        return;
+    *logts << Qt::endl << "<--" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << Qt::endl;
+    *logts << QString::fromLocal8Bit(msg);
+    logts->flush();
+}
+
+void JsonProtocolHandler::logOutgoing(const QByteArray &msg)
+{
+    if(!logts)
+        return;
+    *logts << Qt::endl << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "-->" << Qt::endl;
+    *logts << QString::fromLocal8Bit(msg);
+    logts->flush();
+}
+
 void JsonProtocolHandler::readyRead()
 {
     if(!socketValid() || !socket->bytesAvailable())
@@ -316,7 +349,9 @@ void JsonProtocolHandler::readyRead()
         }
         return;
     }
-    incommingBuf.append(socket->readAll());
+    QByteArray chunk = socket->readAll();
+    logIncoming(chunk);
+    incommingBuf.append(chunk);
     processBuffer();
 }
 

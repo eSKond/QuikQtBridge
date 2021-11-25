@@ -45,20 +45,23 @@ struct ParamSubs
     QMutex mutex;
     ParamSubs(QString pname) : param(pname){}
     void addConsumer(ConnectionData *cd, int id);
-    void delConsumer(ConnectionData *cd);
+    bool delConsumer(ConnectionData *cd);
 };
 
 struct SecSubs
 {
     QString secName;
     QMap<QString, ParamSubs *> params;
+    QMap<ConnectionData *, int> quoteConsumers;
     QMutex mutex;
     SecSubs(QString sec) : secName(sec){}
     ~SecSubs();
     void addConsumer(ConnectionData *cd, QString param, int id);
-    void delConsumer(ConnectionData *cd, QString param);
-    void clearConsumerSubscriptions(ConnectionData *cd);
+    bool delConsumer(ConnectionData *cd, QString param);
+    bool clearAllSubscriptions(ConnectionData *cd);
     ParamSubs *findParamSubscriptions(QString param);
+    void addQuotesConsumer(ConnectionData *cd, int id);
+    bool delQuotesConsumer(ConnectionData *cd);
 };
 
 struct ClsSubs
@@ -69,10 +72,12 @@ struct ClsSubs
     ClsSubs(QString cls) : className(cls){}
     ~ClsSubs();
     void addConsumer(ConnectionData *cd, QString sec, QString param, int id);
-    void delConsumer(ConnectionData *cd, QString sec, QString param);
-    void clearConsumerSubscriptions(ConnectionData *cd);
+    bool delConsumer(ConnectionData *cd, QString sec, QString param);
+    bool clearAllSubscriptions(ConnectionData *cd);
     ParamSubs *findParamSubscriptions(QString sec, QString param);
     SecSubs *findSecuritySubscriptions(QString sec);
+    void addQuotesConsumer(ConnectionData *cd, QString sec, int id);
+    bool delQuotesConsumer(ConnectionData *cd, QString sec);
 };
 
 class ParamSubscriptionsDb
@@ -81,10 +86,12 @@ public:
     ParamSubscriptionsDb();
     ~ParamSubscriptionsDb();
     void addConsumer(ConnectionData *cd, QString cls, QString sec, QString param, int id);
-    void delConsumer(ConnectionData *cd, QString cls, QString sec, QString param);
-    void clearConsumerSubscriptions(ConnectionData *cd);
+    bool delConsumer(ConnectionData *cd, QString cls, QString sec, QString param);
+    bool clearAllSubscriptions(ConnectionData *cd);
     ParamSubs *findParamSubscriptions(QString cls, QString sec, QString param);
     SecSubs *findSecuritySubscriptions(QString cls, QString sec);
+    void addQuotesConsumer(ConnectionData *cd, QString cls, QString sec, int id);
+    bool delQuotesConsumer(ConnectionData *cd, QString cls, QString sec);
 private:
     QMutex mutex;
     QMap<QString, ClsSubs *> classes;
@@ -97,6 +104,7 @@ public:
     BridgeTCPServer(QObject *parent = nullptr);
     ~BridgeTCPServer();
     void setAllowedIPs(const QStringList &aips);
+    void setLogPathPrefix(QString lpp);
 
     virtual void callbackRequest(QString name, const QVariantList &args, QVariant &vres);
     virtual void fastCallbackRequest(void *data, const QVariantList &args, QVariant &res);
@@ -108,6 +116,7 @@ private:
     bool ipAllowed(QString ip);
     QList<ConnectionData *> m_connections;
     QStringList activeCallbacks;
+    QString logPathPrefix;
 
     //cache
     QStringList secClasses;
@@ -125,6 +134,8 @@ private:
     void processSubscribeParamChangesRequest(ConnectionData *cd, int id, QJsonObject &jobj);
     void processUnsubscribeParamChangesRequest(ConnectionData *cd, int id, QJsonObject &jobj);
     void processExtendedAnswers(ConnectionData *cd, int id, QString method, QJsonObject &jobj);
+    void processSubscribeQuotesRequest(ConnectionData *cd, int id, QJsonObject &jobj);
+    void processUnsubscribeQuotesRequest(ConnectionData *cd, int id, QJsonObject &jobj);
 protected:
     virtual void incomingConnection(qintptr handle);
 private slots:
@@ -136,11 +147,12 @@ private slots:
     void protoFinished();
     void protoError(QAbstractSocket::SocketError err);
     void serverError(QAbstractSocket::SocketError err);
-    void debugLog(QString msg);
+    //void debugLog(QString msg);
 
     void fastCallbackRequest(ConnectionData *cd, QString fname, QVariantList args);
 
     void secParamsUpdate(QString cls, QString sec);
+    void secQuotesUpdate(QString cls, QString sec);
 signals:
     void fastCallbackRequestSent(ConnectionData *cd, QString fname, int id);
     void fastCallbackReturnArrived(ConnectionData *cd, int id, QVariant res);

@@ -1,0 +1,42 @@
+﻿{
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_PROJECT_INCLUDE_BEFORE",
+          "value": "C:/Qt/4.1.1/Tools/QtCreator/share/qtcreator/package-manager/auto-setup.cmake",
+          "type": "PATH"
+        },
+        {
+          "name": "QT_QMAKE_EXECUTABLE",
+          "value": "C:/Qt/qt-5.15.7-vs2019-static-win64/bin/qmake.exe",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_PREFIX_PATH",
+          "value": "C:/Qt/qt-5.15.7-vs2019-static-win64",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/cl.exe",
+          "type": "STRING"
+        },
+        {
+          "name": "CMAKE_CXX_COMPILER",
+          "value": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/HostX64/x64/cl.exe",
+          "type": "STRING"
+        }
+      ],
+      "buildRoot": "${projectDir}\\out\\debug\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\debug\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": ""
+    }
+  ]
+}

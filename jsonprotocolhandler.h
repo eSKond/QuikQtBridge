@@ -9,12 +9,14 @@
 #include <QTimerEvent>
 //#include <QTextCodec>
 #include <QJsonDocument>
+#include <QFile>
+#include <QTextStream>
 
 class JsonProtocolHandler : public QObject
 {
     Q_OBJECT
 public:
-    JsonProtocolHandler(QTcpSocket * sock, QObject *parent=0);
+    JsonProtocolHandler(QTcpSocket * sock, QString logFileName=QString(), QObject *parent=0);
     ~JsonProtocolHandler();
     int getSocketDescriptor();
     QTcpSocket * getTcpSocket(){return socket;}
@@ -32,6 +34,8 @@ public slots:
     void sendVer(int ver);
     void end(bool force=false);
 private:
+    QFile *logf;
+    QTextStream *logts;
     QTcpSocket * socket;
     bool peerEnded;
     bool weEnded;
@@ -39,6 +43,8 @@ private:
     //QTextCodec *win1251;
     void processBuffer();
     bool socketValid();
+    void logIncoming(const QByteArray &msg);
+    void logOutgoing(const QByteArray &msg);
 signals:
     void reqArrived(int id, QJsonValue data);
     void ansArrived(int id, QJsonValue data);
@@ -47,7 +53,7 @@ signals:
     void finished();
     void error(QAbstractSocket::SocketError err);
     void parseError(QByteArray trash);
-    void debugLog(QString msg);
+    //void debugLog(QString msg);
 private slots:
     void readyRead();
     void disconnected();

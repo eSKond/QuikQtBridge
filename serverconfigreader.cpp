@@ -1,6 +1,7 @@
 #include "serverconfigreader.h"
 #include <QFileInfo>
 #include <QFile>
+#include <QDir>
 #include <QJsonObject>
 #include <QJsonArray>
 
@@ -8,6 +9,9 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
 {
     QFileInfo fi(scriptPath);
     QString ext = fi.completeSuffix();
+    QString pathPart = fi.path();
+    if(!pathPart.endsWith(QDir::separator()))
+        pathPart += QDir::separator();
     QString jsonPath = scriptPath.replace(scriptPath.length() - ext.length(), ext.length(), QString("json"));
     qDebug() << "Json config path is" << jsonPath;
     QFile jfile(jsonPath);
@@ -23,6 +27,11 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
                 allowedIPs.append(v.toString());
                 qDebug() << v.toString();
             }
+        }
+        if(jdoc.object().contains("exchangeLogPrefix"))
+        {
+            QString prefix = jdoc.object().value("exchangeLogPrefix").toString();
+            logPathPrefix = pathPart+prefix;
         }
         if(jdoc.object().contains("host"))
         {

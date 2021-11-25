@@ -10,13 +10,15 @@ int qtMain(int argc, char *argv[])
     QCoreApplication app(argc, argv);
     QString scriptPath = app.arguments().at(0);
     ServerConfigReader cfgrdr(scriptPath);
-    qDebug() << "create server...";
+    qDebug() << "Create server...";
     BridgeTCPServer server;
     server.setAllowedIPs(cfgrdr.getAllowedIPs());
+    server.setLogPathPrefix(cfgrdr.getLogPathPrefix());
     qDebug() << "start listening...";
     if(server.listen(cfgrdr.getHost(), cfgrdr.getPort()))
         qDebug() << "Server started on:" << server.serverAddress().toString() << ":" << server.serverPort();
     qDebug() << "start app event loop...";
     int res = app.exec();
+    qDebug() << "app event loop finished.";
     return res;
 }
