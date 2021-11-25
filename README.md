@@ -5,56 +5,57 @@
 нескольких запросов.
 
 Вообще протокол разбит на два уровня - сеансовый и прикладной. Весь обмен ведётся при помощи Json объектов.
+
 На сеансовом уровне есть всего 4 вида сообщений, задаваемые ключом type:
-	req - request, запрос
-	ans - answer, ответ
-	ver - version, версия
-	end - окончание сеанса связи
-На сеансовом уровне у каждого сообщения есть id - обычно задаётся запросам на прикладном уровне и обычно ответ имеет тот же
-id, что и запрос. Версия нужна для прикладного уровня чтобы разруливать несовместимости. Введена на будущее, пока она всегда
+
+- req - request, запрос
+- ans - answer, ответ
+- ver - version, версия
+- end - окончание сеанса связи
+
+На сеансовом уровне у каждого сообщения есть id - обычно задаётся запросам на прикладном уровне и обычно ответ имеет тот же id, что и запрос. Версия нужна для прикладного уровня чтобы разруливать несовместимости. Введена на будущее, пока она всегда
 будет 1-й.
 
 Последнее поле сеансового уровня data - тут передаются сообщения прикладного уровня.
 Ниже приведён пример запроса:
 
-{"id":2,"type":"req","data":{"method":"invoke","function":"getClassesList","arguments":[]}}
+`{"id":2,"type":"req","data":{"method":"invoke","function":"getClassesList","arguments":[]}}`
 
 ... и ответа:
 
-{"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}
-
+`{"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}`
 
 На прикладном уровне обычно (но не обязательно) присутствует поле method. Для низкоуровневого апи (прямого маппинга а апи луа) там есть следующие методы:
-  register - регистрация колбека
-  invoke - вызов метода квика. Если при этом ещё определён параметр object, то это вызов метода объекта, как в случае с источниками данных, создаваемыми
-  запросом CreateDataSource 
-  delete - удаление ссылки на квиковый объект. Удаляется именно ссылка, сам объект должен удаляться вызовом соответствующего метода объекта (например Close
-  для DataSource)
+
+**register** - регистрация колбека
+
+**invoke** - вызов метода квика. Если при этом ещё определён параметр object, то это вызов метода объекта, как в случае с источниками данных, создаваемыми запросом CreateDataSource 
+
+**delete** - удаление ссылки на квиковый объект. Удаляется именно ссылка, сам объект должен удаляться вызовом соответствующего метода объекта (например Close для DataSource)
 
 Вот несколько примеров запросов и ответов:
 
-{"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}
-{"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}
-{"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}
+`{"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}`
+`{"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}`
+`{"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}`
 
 Последний пример это запрос на установку колбека на обновление источника данных. Для этого используется специальный парамер:
 
-{"type":"callable","function":"sberUpdated"}
+`{"type":"callable","function":"sberUpdated"}`
 
 В результате клиент будет получать запросы типа:
 
-{"id":10,"type":"req","data":{"method":"invoke","function":"sberUpdated","arguments":[15925]}}
+`{"id":10,"type":"req","data":{"method":"invoke","function":"sberUpdated","arguments":[15925]}}`
 
-На это клиент обязан обязательно отправить ответ, иначе вызывающий поток квика (тот, что вызвал update callback) будет заморожен (шлавный поток сервера при этом продолжает работать)
+На это клиент обязан обязательно отправить ответ, иначе вызывающий поток квика (тот, что вызвал update callback) будет заморожен (главный поток сервера при этом продолжает работать)
 
 Собственно на этом низкоуровневые методы и заканчиваются - это позволяет делать всё, что можно делать на луа удалённо, из внешней программы.
 
 Высокоуровневых запросов сейчас 7:
 
-{"id":3,"type":"req","data":{'method': 'loadaccounts', 'filters': [{'key': 'class_codes', 'regexp': 'SPB'}]}}
+`{"id":3,"type":"req","data":{'method': 'loadaccounts', 'filters': [{'key': 'class_codes', 'regexp': 'SPB'}]}}`
 
-Запрос информации о клиентских счетах. В поле filters передаётся список фильтров, которые определяют поле таблицы торговых счетов и регулярное выражение. Все регулярки должны
-найти совпадение в строке, чтобы она попала в результат. В примере выше запрашиваются все счета, которые имеют доступ к SPB (то есть срочный рынок по сути)
+Запрос информации о клиентских счетах. В поле `filters` передаётся список фильтров, которые определяют поле таблицы торговых счетов и регулярное выражение. Все регулярки должны найти совпадение в строке, чтобы она попала в результат. В примере выше запрашиваются все счета, которые имеют доступ к SPB (то есть срочный рынок по сути)
 
 
 
