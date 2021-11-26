@@ -27,7 +27,9 @@ BridgeTCPServer::~BridgeTCPServer()
 {
     while(!m_connections.isEmpty())
     {
-        delete m_connections.takeLast();
+        ConnectionData *cd = m_connections.takeLast();
+        paramSubscriptions.clearAllSubscriptions(cd);
+        delete cd;
     }
 }
 
@@ -45,7 +47,7 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
 {
     if(!activeCallbacks.contains(name))
     {
-        sendStderrLine(QString("Функция обратного вызова %1 не была зарегистрирована, но вызвана").arg(name));
+        sendStderrLine(QString("Called callback %1 was not registered").arg(name));
         return;
     }
     QJsonObject cbCall
@@ -60,7 +62,7 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
         if(cd->callbackSubscriptions.contains(name))
         {
             int id = cd->callbackSubscriptions.value(name);
-            cd->proto->sendReq(id, cbCall, true);
+            cd->proto->sendReq(id, cbCall, false);
         }
     }
     if(name == "OnStop")
@@ -72,6 +74,10 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
     {
         QString cls = args[0].toString();
         QString sec = args[1].toString();
+        QMetaObject::invokeMethod(this, "secParamsUpdate", Qt::QueuedConnection,
+                                  Q_ARG(QString, cls),
+                                  Q_ARG(QString, sec));
+        /*
         SecSubs *s = paramSubscriptions.findSecuritySubscriptions(cls, sec);
         if(s)
         {
@@ -79,11 +85,16 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
                                       Q_ARG(QString, cls),
                                       Q_ARG(QString, sec));
         }
+        */
     }
     if(name == "OnQuote")
     {
         QString cls = args[0].toString();
         QString sec = args[1].toString();
+        QMetaObject::invokeMethod(this, "secQuotesUpdate", Qt::QueuedConnection,
+                                  Q_ARG(QString, cls),
+                                  Q_ARG(QString, sec));
+        /*
         SecSubs *s = paramSubscriptions.findSecuritySubscriptions(cls, sec);
         if(s)
         {
@@ -91,6 +102,7 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
                                       Q_ARG(QString, cls),
                                       Q_ARG(QString, sec));
         }
+        */
     }
 }
 
@@ -116,7 +128,7 @@ void BridgeTCPServer::clearFastCallbackData(void *data)
 
 void BridgeTCPServer::sendStdoutLine(QString line)
 {
-    qDebug() << line;
+    //qDebug() << line;
 }
 
 void BridgeTCPServer::sendStderrLine(QString line)
@@ -188,13 +200,13 @@ void BridgeTCPServer::processExtendedRequests(ConnectionData *cd, int id, QStrin
         processLoadClassesRequest(cd, id, jobj);
     else if(method == "loadclasssecurities")
         processLoadClassSecuritiesRequest(cd, id, jobj);
-    else if(method == "subscribeParamChanges")
+    else if(method == "subscribeparamchanges")
         processSubscribeParamChangesRequest(cd, id, jobj);
-    else if(method == "unsubscribeParamChanges")
+    else if(method == "unsubscribeparamchanges")
         processUnsubscribeParamChangesRequest(cd, id, jobj);
-    else if(method == "subscribeQuotes")
+    else if(method == "subscribequotes")
         processSubscribeQuotesRequest(cd, id, jobj);
-    else if(method == "unsubscribeQuotes")
+    else if(method == "unsubscribequotes")
         processUnsubscribeQuotesRequest(cd, id, jobj);
 }
 
@@ -250,7 +262,7 @@ void BridgeTCPServer::processLoadAccountsRequest(ConnectionData *cd, int id, QJs
         {"method", "return"},
         {"result", table}
     };
-    cd->proto->sendAns(id, invRes, true);
+    cd->proto->sendAns(id, invRes, false);
 }
 
 void BridgeTCPServer::processLoadClassesRequest(ConnectionData *cd, int id, QJsonObject &jobj)
@@ -263,7 +275,7 @@ void BridgeTCPServer::processLoadClassesRequest(ConnectionData *cd, int id, QJso
         {"method", "return"},
         {"result", clist}
     };
-    cd->proto->sendAns(id, invRes, true);
+    cd->proto->sendAns(id, invRes, false);
 }
 
 void BridgeTCPServer::processLoadClassSecuritiesRequest(ConnectionData *cd, int id, QJsonObject &jobj)
@@ -331,7 +343,7 @@ void BridgeTCPServer::processLoadClassSecuritiesRequest(ConnectionData *cd, int 
         {"method", "return"},
         {"result", table}
     };
-    cd->proto->sendAns(id, invRes, true);
+    cd->proto->sendAns(id, invRes, false);
 }
 
 void BridgeTCPServer::processSubscribeParamChangesRequest(ConnectionData *cd, int id, QJsonObject &jobj)
@@ -383,7 +395,7 @@ void BridgeTCPServer::processSubscribeParamChangesRequest(ConnectionData *cd, in
         {"method", "return"},
         {"result", true}
     };
-    cd->proto->sendAns(id, subsRes, true);
+    cd->proto->sendAns(id, subsRes, false);
 }
 
 void BridgeTCPServer::processUnsubscribeParamChangesRequest(ConnectionData *cd, int id, QJsonObject &jobj)
@@ -426,7 +438,7 @@ void BridgeTCPServer::processUnsubscribeParamChangesRequest(ConnectionData *cd, 
         {"method", "return"},
         {"result", true}
     };
-    cd->proto->sendAns(id, usubsRes, true);
+    cd->proto->sendAns(id, usubsRes, false);
 }
 
 void BridgeTCPServer::processExtendedAnswers(ConnectionData *cd, int id, QString method, QJsonObject &jobj)
@@ -477,7 +489,8 @@ void BridgeTCPServer::processSubscribeQuotesRequest(ConnectionData *cd, int id, 
         {"method", "return"},
         {"result", true}
     };
-    cd->proto->sendAns(id, subsRes, true);
+    cd->proto->sendAns(id, subsRes, false);
+    secQuotesUpdate(cls, sec);
 }
 
 void BridgeTCPServer::processUnsubscribeQuotesRequest(ConnectionData *cd, int id, QJsonObject &jobj)
@@ -515,7 +528,7 @@ void BridgeTCPServer::processUnsubscribeQuotesRequest(ConnectionData *cd, int id
         {"method", "return"},
         {"result", true}
     };
-    cd->proto->sendAns(id, usubsRes, true);
+    cd->proto->sendAns(id, usubsRes, false);
 }
 
 void BridgeTCPServer::incomingConnection(qintptr handle)
@@ -531,7 +544,7 @@ void BridgeTCPServer::incomingConnection(qintptr handle)
         allowed = true;
     if(!allowed)
     {
-        QString msg = QString("Отклонена попытка подключения с адреса %1").arg(sock->peerAddress().toString());
+        QString msg = QString("Connection from %1 refused").arg(sock->peerAddress().toString());
         sock->close();
         sock->deleteLater();
         sendStderrLine(msg);
@@ -553,7 +566,7 @@ void BridgeTCPServer::incomingConnection(qintptr handle)
     connect(cd->proto, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(protoError(QAbstractSocket::SocketError)));
     //connect(cd->proto, SIGNAL(debugLog(QString)), this, SLOT(debugLog(QString)));
 
-    QString msg = QString("Новое подключение с адреса %1").arg(cd->peerIp);
+    QString msg = QString("New connection from %1 established").arg(cd->peerIp);
     sendStdoutLine(msg);
 
     QMetaObject::invokeMethod(this, "connectionEstablished", Qt::QueuedConnection,
@@ -571,7 +584,7 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
 {
     Qt::HANDLE thh = QThread::currentThreadId();
     QString hstr = QString("0x%1").arg((quintptr)thh, QT_POINTER_SIZE * 2, 16, QChar('0'));
-    qDebug() << "protoReqArrived thread: " << hstr;
+    //qDebug() << "protoReqArrived thread: " << hstr;
     ConnectionData *cd = getCDByProtoPtr(qobject_cast<JsonProtocolHandler *>(sender()));
     if(!cd)
         return;
@@ -620,7 +633,7 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
             {"method", "registered"},
             {"callback", callbackName}
         };
-        cd->proto->sendAns(id, regRes, true);
+        cd->proto->sendAns(id, regRes, false);
         return;
     }
     if(method == "invoke")
@@ -694,7 +707,7 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
             {"method", "return"},
             {"result", QJsonArray::fromVariantList(res)}
         };
-        cd->proto->sendAns(id, invRes, true);
+        cd->proto->sendAns(id, invRes, false);
         return;
     }
     if(method == "delete")
@@ -711,7 +724,7 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
                 {"object", objId}
             };
             cd->objRefs.removeAll(objId);
-            cd->proto->sendAns(id, delRes, true);
+            cd->proto->sendAns(id, delRes, false);
             return;
         }
         else
@@ -775,7 +788,7 @@ void BridgeTCPServer::protoEndArrived()
     ConnectionData *cd = getCDByProtoPtr(qobject_cast<JsonProtocolHandler *>(sender()));
     if(cd)
     {
-        QString msg = QString("Запрос на закрытие соединения с %1").arg(cd->peerIp);
+        QString msg = QString("Close connection request from %1").arg(cd->peerIp);
         sendStdoutLine(msg);
     }
 }
@@ -785,7 +798,7 @@ void BridgeTCPServer::protoFinished()
     ConnectionData *cd = getCDByProtoPtr(qobject_cast<JsonProtocolHandler *>(sender()));
     if(cd)
     {
-        QString msg = QString("Соединение с %1 закрыто").arg(cd->peerIp);
+        QString msg = QString("Connection %1 closed").arg(cd->peerIp);
         sendStdoutLine(msg);
         m_connections.removeAll(cd);
         paramSubscriptions.clearAllSubscriptions(cd);
@@ -799,23 +812,16 @@ void BridgeTCPServer::protoError(QAbstractSocket::SocketError err)
     if(cd)
     {
         sendStderrLine(QString("Socket error %1: ").arg((int)err)+cd->proto->lastErrorString());
+        m_connections.removeAll(cd);
+        paramSubscriptions.clearAllSubscriptions(cd);
+        delete cd;
     }
 }
 
 void BridgeTCPServer::serverError(QAbstractSocket::SocketError err)
 {
-    sendStderrLine(QString("Ошибка на соединении с сервером: ") + errorString());
+    sendStderrLine(QString("Server accepting error: ") + errorString());
 }
-
-//void BridgeTCPServer::debugLog(QString msg)
-//{
-//    ConnectionData *cd = getCDByProtoPtr(qobject_cast<JsonProtocolHandler *>(sender()));
-//    if(cd)
-//    {
-//        QString outmsg = QString("%1: ").arg(cd->peerIp) + msg;
-//        sendStdoutLine(outmsg);
-//    }
-//}
 
 void BridgeTCPServer::fastCallbackRequest(ConnectionData *cd, QString fname, QVariantList args)
 {
@@ -828,7 +834,7 @@ void BridgeTCPServer::fastCallbackRequest(ConnectionData *cd, QString fname, QVa
             {"arguments", QJsonArray::fromVariantList(args)}
         };
         int id = ++(cd->outMsgId);
-        cd->proto->sendReq(id, invReq, true);
+        cd->proto->sendReq(id, invReq, false);
         cd->fcbWaitResult->fastCallbackRequestSent(cd, fname, id);
     }
 }
@@ -867,49 +873,21 @@ void BridgeTCPServer::secParamsUpdate(QString cls, QString sec)
             {
                 ConnectionData *cd = consList.at(j);
                 int id = p->consumers.value(cd);
-                cd->proto->sendAns(id, subsAns, true);
+                cd->proto->sendReq(id, subsAns, false);
             }
-            /*
-            QVariant pval;
-            if(mres["result"].toInt() == 0)
-            {
-                //а что делать?
-                break;
-            }
-            switch(mres["param_type"].toInt())
-            {
-            case 1: //почему-то квик передаёт как дабл, то что обозначено как инт
-            case 2:
-                pval = mres["param_value"].toDouble();
-                break;
-            case 3:
-                pval = mres["param_image"].toString();
-                break;
-            case 4:
-                pval = mres["param_value"].toInt();
-                break;
-            case 5:
-                qDebug() << "getParamEx returned date";
-                break;
-            case 6:
-                qDebug() << "getParamEx returned time";
-                break;
-            default:
-                pval = mres["param_value"];
-                break;
-            }
-            */
         }
     }
 }
 
 void BridgeTCPServer::secQuotesUpdate(QString cls, QString sec)
 {
+    bool needStop = true;
     SecSubs *s = paramSubscriptions.findSecuritySubscriptions(cls, sec);
     if(s)
     {
         if(!s->quoteConsumers.isEmpty())
         {
+            needStop = false;
             QVariantList args, res;
             args << cls << sec;
             qqBridge->invokeMethod("getQuoteLevel2", args, res, this);
@@ -927,9 +905,17 @@ void BridgeTCPServer::secQuotesUpdate(QString cls, QString sec)
             {
                 ConnectionData *cd = consList.at(i);
                 int id = s->quoteConsumers.value(cd);
-                cd->proto->sendAns(id, subsQAns, true);
+                cd->proto->sendReq(id, subsQAns, false);
             }
         }
+    }
+    if(needStop)
+    {
+        QVariantList args, res;
+        args << cls << sec;
+        qqBridge->invokeMethod("Unsubscribe_Level_II_Quotes", args, res, this);
+        if(!res[0].toBool())
+            sendStderrLine("Unsubscribe_Level_II_Quotes returned false");
     }
 }
 
@@ -1240,9 +1226,10 @@ bool SecSubs::clearAllSubscriptions(ConnectionData *cd)
     }
     while (!toDel.isEmpty())
     {
-        delete params.take(toDel.takeLast());
+        QString pname = toDel.takeFirst();
+        delete params.take(pname);
     }
-    delQuotesConsumer(cd);
+    quoteConsumers.remove(cd);
     return (params.isEmpty() && quoteConsumers.isEmpty());
 }
 

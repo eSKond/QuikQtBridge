@@ -96,7 +96,7 @@ void JsonProtocolHandler::sendReq(int id, QJsonValue data, bool showInLog)
 
     socket->write(msg);
     socket->flush();
-    qDebug() << "Sent";
+    //qDebug() << "Sent";
 }
 
 void JsonProtocolHandler::sendAns(int id, QJsonValue data, bool showInLog)
@@ -124,7 +124,7 @@ void JsonProtocolHandler::sendAns(int id, QJsonValue data, bool showInLog)
 
     socket->write(msg);
     socket->flush();
-    qDebug() << ("Sent");
+    //qDebug() << ("Sent");
 }
 
 void JsonProtocolHandler::sendVer(int ver)
@@ -150,7 +150,7 @@ void JsonProtocolHandler::sendVer(int ver)
 
     socket->write(msg);
     socket->flush();
-    qDebug() << ("Sent");
+    //qDebug() << ("Sent");
 }
 
 void JsonProtocolHandler::end(bool force)
@@ -174,7 +174,7 @@ void JsonProtocolHandler::end(bool force)
     qDebug() << ("send END");
     socket->write(msg);
     socket->flush();
-    qDebug() << ("Sent");
+    //qDebug() << ("Sent");
     weEnded=true;
     if(peerEnded)
         socket->disconnectFromHost();
@@ -244,7 +244,7 @@ void JsonProtocolHandler::processBuffer()
                     }
                     else
                     {
-                        qDebug() << (QString("Received:") + QString::fromLocal8Bit(pdoc));
+                        //qDebug() << (QString("Received:") + QString::fromLocal8Bit(pdoc));
                         QJsonObject jobj = jdoc.object();
                         if(jobj.contains("id") && jobj.contains("type"))
                         {

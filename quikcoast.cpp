@@ -631,6 +631,110 @@ static int onStopHandler(lua_State *l)
     return rescnt;
 }
 
+static int onParamHandler(lua_State *l)
+{
+    QVariantList args;
+    QVariant sv, vres;
+    QVariantList lv;
+    QVariantMap mv;
+    int i;
+    int top = lua_gettop(l);
+    for(i = 1; i <= top; i++)
+    {
+        int vtp = extractValueFromLuaStack(l, i, sv, lv, mv);
+        if(!vtp)
+        {
+            args.append(sv);
+        }
+        else
+        {
+            if(vtp==1)
+            {
+                args.insert(args.length(), lv);
+            }
+            else
+            {
+                args.insert(args.length(), mv);
+            }
+        }
+    }
+    setRecentStack(l);
+    qqBridge->callbackRequest("OnParam", args, vres);
+    int rescnt = 0;
+    if(!vres.isNull())
+    {
+        if(vres.type() == QVariant::List)
+        {
+            //special case: multiple results
+            QVariantList lst = vres.toList();
+            for(int li=0;li<lst.count();li++)
+            {
+                QVariant v = lst.at(li);
+                pushVariantToLuaStack(l, v, QString());
+                rescnt++;
+            }
+        }
+        else
+        {
+            pushVariantToLuaStack(l, vres, QString());
+            rescnt++;
+        }
+    }
+    return rescnt;
+}
+
+static int onQuoteHandler(lua_State *l)
+{
+    QVariantList args;
+    QVariant sv, vres;
+    QVariantList lv;
+    QVariantMap mv;
+    int i;
+    int top = lua_gettop(l);
+    for(i = 1; i <= top; i++)
+    {
+        int vtp = extractValueFromLuaStack(l, i, sv, lv, mv);
+        if(!vtp)
+        {
+            args.append(sv);
+        }
+        else
+        {
+            if(vtp==1)
+            {
+                args.insert(args.length(), lv);
+            }
+            else
+            {
+                args.insert(args.length(), mv);
+            }
+        }
+    }
+    setRecentStack(l);
+    qqBridge->callbackRequest("OnQuote", args, vres);
+    int rescnt = 0;
+    if(!vres.isNull())
+    {
+        if(vres.type() == QVariant::List)
+        {
+            //special case: multiple results
+            QVariantList lst = vres.toList();
+            for(int li=0;li<lst.count();li++)
+            {
+                QVariant v = lst.at(li);
+                pushVariantToLuaStack(l, v, QString());
+                rescnt++;
+            }
+        }
+        else
+        {
+            pushVariantToLuaStack(l, vres, QString());
+            rescnt++;
+        }
+    }
+    return rescnt;
+}
+
 static struct luaL_Reg ls_lib[] = {
     //{"OnInit", onInitHandler},
     //{"main", mainTrampoline},
@@ -642,6 +746,8 @@ int luaopenImp(lua_State *l)
     luaL_newlib(l, ls_lib);
     lua_register(l, "OnInit", onInitHandler);
     lua_register(l, "OnStop", onStopHandler);
+    lua_register(l, "OnParam", onParamHandler);
+    lua_register(l, "OnQuote", onQuoteHandler);
     lua_register(l, "main", mainTrampoline);
     return 0;
 }

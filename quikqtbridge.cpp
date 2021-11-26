@@ -1,5 +1,6 @@
 #include "quikcoast.h"
 #include "quikqtbridge.h"
+#include <QDebug>
 
 QuikQtBridge *QuikQtBridge::global_bridge = nullptr;
 
@@ -42,7 +43,7 @@ bool QuikQtBridge::registerCallback(QuikCallbackHandler *handler, QString name)
 {
     if(m_handlers.contains(name))
         return false;
-    if(name!="OnStop")
+    if(name!="OnStop" && name!="OnParam" && name!="OnQuote")
     {
         if(!registerNamedCallback(name))
             return false;
@@ -70,6 +71,7 @@ void QuikQtBridge::setRecentStack(Qt::HANDLE ctid, lua_State *l)
 
 void QuikQtBridge::callbackRequest(QString name, const QVariantList &args, QVariant &vres)
 {
+    //qDebug() << "callbackRequest:" << name;
     if(m_handlers.contains(name))
     {
         m_handlers.value(name)->callbackRequest(name, args, vres);
