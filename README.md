@@ -19,11 +19,15 @@
 Последнее поле сеансового уровня data - тут передаются сообщения прикладного уровня.
 Ниже приведён пример запроса:
 
-`{"id":2,"type":"req","data":{"method":"invoke","function":"getClassesList","arguments":[]}}`
+```
+{"id":2,"type":"req","data":{"method":"invoke","function":"getClassesList","arguments":[]}}
+```
 
 ... и ответа:
 
-`{"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}`
+```
+{"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}
+```
 
 На прикладном уровне обычно (но не обязательно) присутствует поле method. Для низкоуровневого апи (прямого маппинга а апи луа) там есть следующие методы:
 
@@ -35,19 +39,27 @@
 
 Вот несколько примеров запросов и ответов:
 
-`{"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}`
-
-`{"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}`
-
-`{"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}`
+```
+{"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}
+```
+```
+{"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}
+```
+```
+{"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}
+```
 
 Последний пример это запрос на установку колбека на обновление источника данных. Для этого используется специальный парамер:
 
-`{"type":"callable","function":"sberUpdated"}`
+```
+{"type":"callable","function":"sberUpdated"}
+```
 
 В результате клиент будет получать запросы типа:
 
-`{"id":10,"type":"req","data":{"method":"invoke","function":"sberUpdated","arguments":[15925]}}`
+```
+{"id":10,"type":"req","data":{"method":"invoke","function":"sberUpdated","arguments":[15925]}}
+```
 
 На это клиент обязан обязательно отправить ответ, иначе вызывающий поток квика (тот, что вызвал update callback) будет заморожен (главный поток сервера при этом продолжает работать)
 
@@ -57,31 +69,41 @@
 
 **loadAccounts**
 
-`{"id":3,"type":"req","data":{"method": "loadAccounts", "filters": [{"key": "class_codes", "regexp": "SPB"}]}}`
+```
+{"id":3,"type":"req","data":{"method": "loadAccounts", "filters": [{"key": "class_codes", "regexp": "SPB"}]}}
+```
 
 Запрос информации о клиентских счетах. В поле `filters` передаётся список фильтров, которые определяют поле таблицы торговых счетов и регулярное выражение. Все регулярки должны найти совпадение в строке, чтобы она попала в результат. В примере выше запрашиваются все счета, которые имеют доступ к SPB (то есть срочный рынок по сути)
 
 **loadClasses**
 
-`{"id":3,"type":"req","data":{"method": "loadClasses"}}`
+```
+{"id":3,"type":"req","data":{"method": "loadClasses"}}
+```
 
 Вернёт список классов.
 
 **loadClasSecurities**
 
-`{"id":3,"type":"req","data":{"method": "loadClasSecurities", "class": "TQBR", "filters": [{"key": "lot_size", "regexp": "10"}]}}`
+```
+{"id":3,"type":"req","data":{"method": "loadClasSecurities", "class": "TQBR", "filters": [{"key": "lot_size", "regexp": "10"}]}}
+```
 
 Данный запрос вернёт все бумаги класса TQBR с размером лота = 10 штук. Список полей смотрите в документации quik "4.21 Инструменты"
 
 **subscribeParamChanges и unsubscribeParamChanges**
 
-`{"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER", "param": "VOLATILITY"}}`
+```
+{"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER", "param": "VOLATILITY"}}
+```
 
 unsubscribe... выглядит так же, меняется только поле method. Список параметров тот же что при вызове функции lua getParamEx (а где его искать в документации квика я не знаю, но где-то он точно есть :) )
 
 **subscribeQoutes и unsubscribeQuotes**
 
-`{"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER"}}`
+```
+{"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER"}}
+```
 
 Это подписка на стаканы, которые будут обновляться автоматом по событию OnQuote и забираться вызовом getQuoteLevel2. Тут есть одна неочевидная приятность - если вы несколько соединений установите и в каждом подпишетесь на один и тот же стакан, то получать оба подписчика будут стаканы по одному событию, дёргая квик один раз.
 
@@ -93,9 +115,10 @@ unsubscribe... выглядит так же, меняется только по�
 
 У меня он выглядит так:
 
-`package.cpath = package.cpath..[[;c:\Work\QuikQtBridge\build-QuikQtBridge-qt_5_15_7_vs2019_static_win64-Debug\?.dll]]`
-
-`require "QuikQtBridge"`
+```
+package.cpath = package.cpath..[[;c:\Work\QuikQtBridge\build-QuikQtBridge-qt_5_15_7_vs2019_static_win64-Debug\?.dll]]
+require "QuikQtBridge"
+```
 
 первая строка просто добавляет путь где лежит dll во внутрениий path lua. Вторая строка просто загружает её как библиотеку lua
 
@@ -104,16 +127,16 @@ unsubscribe... выглядит так же, меняется только по�
 Конфигурационный файл (QuikQtBridgeStart.json) должен лежать в том же каталоге, где и инициализирующий скрипт. Вот так выглядит конфигурационный файл у меня:
 
 ```
-    {
-    	"host": "anyIPv4",
-    	"port": 57777,
-    	"exchangeLogPrefix": "exch",
-       	"allowedIPs":[
-    		"127\\.0\\.0\\.1",
-        	"192\\.168\\.0\\.*",
-        	"192\\.168\\.2\\.*"
-       	]
-    }
+{
+	"host": "anyIPv4",
+	"port": 57777,
+	"exchangeLogPrefix": "exch",
+   	"allowedIPs":[
+		"127\\.0\\.0\\.1",
+    	"192\\.168\\.0\\.*",
+    	"192\\.168\\.2\\.*"
+   	]
+}
 ```
 
 host может быть либо конкретным IP (смотрите какие интерфейсы у вас доступны), либо специальными адресами: "local", он же "localhost" - локальный лупбэк, "any" - любой доступный, как IP4 так и IP6, "anyIPv4" и "anyIPv6" - тоже любой, но ограниченный версией IP
