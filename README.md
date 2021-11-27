@@ -19,13 +19,13 @@
 Последнее поле сеансового уровня data - тут передаются сообщения прикладного уровня.
 Ниже приведён пример запроса:
 
-```
+```json
 {"id":2,"type":"req","data":{"method":"invoke","function":"getClassesList","arguments":[]}}
 ```
 
 ... и ответа:
 
-```
+```json
 {"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}
 ```
 
@@ -39,25 +39,25 @@
 
 Вот несколько примеров запросов и ответов:
 
-```
+```json
 {"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}
 ```
-```
+```json
 {"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}
 ```
-```
+```json
 {"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}
 ```
 
 Последний пример это запрос на установку колбека на обновление источника данных. Для этого используется специальный парамер:
 
-```
+```json
 {"type":"callable","function":"sberUpdated"}
 ```
 
 В результате клиент будет получать запросы типа:
 
-```
+```json
 {"id":10,"type":"req","data":{"method":"invoke","function":"sberUpdated","arguments":[15925]}}
 ```
 
@@ -69,7 +69,7 @@
 
 **loadAccounts**
 
-```
+```json
 {"id":3,"type":"req","data":{"method": "loadAccounts", "filters": [{"key": "class_codes", "regexp": "SPB"}]}}
 ```
 
@@ -77,7 +77,7 @@
 
 **loadClasses**
 
-```
+```json
 {"id":3,"type":"req","data":{"method": "loadClasses"}}
 ```
 
@@ -85,7 +85,7 @@
 
 **loadClasSecurities**
 
-```
+```json
 {"id":3,"type":"req","data":{"method": "loadClasSecurities", "class": "TQBR", "filters": [{"key": "lot_size", "regexp": "10"}]}}
 ```
 
@@ -93,19 +93,50 @@
 
 **subscribeParamChanges и unsubscribeParamChanges**
 
-```
+```json
 {"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER", "param": "VOLATILITY"}}
 ```
 
-unsubscribe... выглядит так же, меняется только поле method. Список параметров тот же что при вызове функции lua getParamEx (а где его искать в документации квика я не знаю, но где-то он точно есть :) )
+unsubscribe... выглядит так же, меняется только поле method. Список параметров тот же что при вызове функции lua getParamEx (а где его искать в документации квика я не знаю, но где-то он точно есть :) ). В ответ сначала придёт:
+
+```json
+{"data":{"method":"return","result":true},"id":400,"type":"ans"}
+```
+
+после чего начнут приходить обновления параметров отдельными пакетами req (не ans !):
+
+```json
+{"data":{"class":"TQBR","method":"paramChange","param": "VOLATILITY","security":"SBER","value":15.5},"id":400,"type":"req"}
+```
 
 **subscribeQoutes и unsubscribeQuotes**
 
-```
-{"id":3,"type":"req","data":{"method": "subscribeParamChanges", "class": "TQBR", "security": "SBER"}}
+```json
+{"id":400,"type":"req","data":{"method":"subscribeQuotes","class":"SPBFUT","security":"RIZ1"}}
 ```
 
 Это подписка на стаканы, которые будут обновляться автоматом по событию OnQuote и забираться вызовом getQuoteLevel2. Тут есть одна неочевидная приятность - если вы несколько соединений установите и в каждом подпишетесь на один и тот же стакан, то получать оба подписчика будут стаканы по одному событию, дёргая квик один раз.
+
+Ответ будет выглядеть примерно так:
+
+```json
+{"data":{"method":"return","result":true},"id":400,"type":"ans"}
+```
+
+После чего сервер будет автоматически при обновлениях отправлять такие пакеты req (не ans !):
+
+```json
+{"data":{"class":"SPBFUT","method":"quotesChange","quotes":{"bid_count":"0.000000","offer_count":"0.000000"},"security":"RIZ1"},"id":400,"type":"req"}
+```
+
+Это для случая когда стаканы ещё не получены (подписка происходит автоматом, открывать окно в квике не нужно, но на поступление данных может потребоваться время). Такой пустой стакан обычно приходит сразу после подписки, поскольку вызывается без сигнала от квика. Если же данные стакана уже есть, то ответ будет выглядеть так:
+
+```json
+{"data":{"class":"SPBFUT","method":"quotesChange","quotes":{"bid":[{"price":"158280","quantity":"3"},{"price":"158290","quantity":"6"},
+{"price":"159270","quantity":"35"},{"price":"159290","quantity":"1"},{"price":"159300","quantity":"11"}],"offer_count":"50.000000"},"security":"RIZ1"},"id":400,"type":"req"}
+```
+
+(я удалил много повторяющихся пар price/quantity чтобы не загромождать пример, но вообще там два массива, за подробностями идём в документацию квика, раздел getQuoteLevel2). Как видите, сервер добавляет в стандартный квиковые данные по стакану класс и название бумаги, поэтому можно не отслеживать id сообщения, чтобы понимать к какой бумаге оно относится.
 
 ## Бинарник
 
