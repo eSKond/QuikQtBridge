@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QThread>
 #include <string.h>
+//#include <processthreadsapi.h>
 
 #define JUMP_TABLE_SIZE 100
 
@@ -41,7 +42,8 @@ lua_State *getRecentStackForThreadId(Qt::HANDLE ctid)
 
 lua_State *getRecentStack(Qt::HANDLE *p_ctid=nullptr)
 {
-    Qt::HANDLE ctid = QThread::currentThreadId();
+    Qt::HANDLE ctid = reinterpret_cast<Qt::HANDLE>(Concurrency::details::platform::GetCurrentThreadId());
+    //Qt::HANDLE ctid = QThread::currentThreadId();
     if(p_ctid)
         *p_ctid = ctid;
     return getRecentStackForThreadId(ctid);
@@ -140,6 +142,21 @@ bool registerNamedCallback(QString cbName)
         jumpTable[i].fName = cbName;
         lua_register(recentStack, cbName.toLocal8Bit().data(), jumpTable[i].callback);
     }
+    return true;
+}
+
+bool registerPredefinedNamedCallback(lua_State *l, QString cbName)
+{
+    Qt::HANDLE ctid = reinterpret_cast<Qt::HANDLE>(Concurrency::details::platform::GetCurrentThreadId());
+    int i=findJumpTableSlotForNamedCallback(cbName);
+    if(i<0)
+    {
+        return false;
+    }
+    jumpTable[i].owner = nullptr;
+    jumpTable[i].threadId = ctid;
+    jumpTable[i].fName = cbName;
+    lua_register(l, cbName.toLocal8Bit().data(), jumpTable[i].callback);
     return true;
 }
 
@@ -579,6 +596,11 @@ static int mainTrampoline(lua_State *l)
     return 0;
 }
 
+//Оставим этот код в комментах на всякий случай. Это жёсткая привязка предопределенного колбека
+//который нужно регать заранее. Мы использовали динамическую привязку через таблицу переходов
+//но вдруг там какие то проблемы обнаружатся и придётся каждому колбеку такую обёртку писать
+//Но вообще всё должно работать (и тьфу-тьфу работает)
+/*
 static int onStopHandler(lua_State *l)
 {
     QVariantList args;
@@ -630,110 +652,7 @@ static int onStopHandler(lua_State *l)
     }
     return rescnt;
 }
-
-static int onParamHandler(lua_State *l)
-{
-    QVariantList args;
-    QVariant sv, vres;
-    QVariantList lv;
-    QVariantMap mv;
-    int i;
-    int top = lua_gettop(l);
-    for(i = 1; i <= top; i++)
-    {
-        int vtp = extractValueFromLuaStack(l, i, sv, lv, mv);
-        if(!vtp)
-        {
-            args.append(sv);
-        }
-        else
-        {
-            if(vtp==1)
-            {
-                args.insert(args.length(), lv);
-            }
-            else
-            {
-                args.insert(args.length(), mv);
-            }
-        }
-    }
-    setRecentStack(l);
-    qqBridge->callbackRequest("OnParam", args, vres);
-    int rescnt = 0;
-    if(!vres.isNull())
-    {
-        if(vres.type() == QVariant::List)
-        {
-            //special case: multiple results
-            QVariantList lst = vres.toList();
-            for(int li=0;li<lst.count();li++)
-            {
-                QVariant v = lst.at(li);
-                pushVariantToLuaStack(l, v, QString());
-                rescnt++;
-            }
-        }
-        else
-        {
-            pushVariantToLuaStack(l, vres, QString());
-            rescnt++;
-        }
-    }
-    return rescnt;
-}
-
-static int onQuoteHandler(lua_State *l)
-{
-    QVariantList args;
-    QVariant sv, vres;
-    QVariantList lv;
-    QVariantMap mv;
-    int i;
-    int top = lua_gettop(l);
-    for(i = 1; i <= top; i++)
-    {
-        int vtp = extractValueFromLuaStack(l, i, sv, lv, mv);
-        if(!vtp)
-        {
-            args.append(sv);
-        }
-        else
-        {
-            if(vtp==1)
-            {
-                args.insert(args.length(), lv);
-            }
-            else
-            {
-                args.insert(args.length(), mv);
-            }
-        }
-    }
-    setRecentStack(l);
-    qqBridge->callbackRequest("OnQuote", args, vres);
-    int rescnt = 0;
-    if(!vres.isNull())
-    {
-        if(vres.type() == QVariant::List)
-        {
-            //special case: multiple results
-            QVariantList lst = vres.toList();
-            for(int li=0;li<lst.count();li++)
-            {
-                QVariant v = lst.at(li);
-                pushVariantToLuaStack(l, v, QString());
-                rescnt++;
-            }
-        }
-        else
-        {
-            pushVariantToLuaStack(l, vres, QString());
-            rescnt++;
-        }
-    }
-    return rescnt;
-}
+*/
 
 static struct luaL_Reg ls_lib[] = {
     //{"OnInit", onInitHandler},
@@ -745,9 +664,30 @@ int luaopenImp(lua_State *l)
 {
     luaL_newlib(l, ls_lib);
     lua_register(l, "OnInit", onInitHandler);
-    lua_register(l, "OnStop", onStopHandler);
-    lua_register(l, "OnParam", onParamHandler);
-    lua_register(l, "OnQuote", onQuoteHandler);
+    registerPredefinedNamedCallback(l, "OnFirm");
+    registerPredefinedNamedCallback(l, "OnAllTrade");
+    registerPredefinedNamedCallback(l, "OnTrade");
+    registerPredefinedNamedCallback(l, "OnOrder");
+    registerPredefinedNamedCallback(l, "OnAccountBalance");
+    registerPredefinedNamedCallback(l, "OnFuturesLimitChange");
+    registerPredefinedNamedCallback(l, "OnFuturesLimitDelete");
+    registerPredefinedNamedCallback(l, "OnFuturesClientHolding");
+    registerPredefinedNamedCallback(l, "OnMoneyLimit");
+    registerPredefinedNamedCallback(l, "OnMoneyLimitDelete");
+    registerPredefinedNamedCallback(l, "OnDepoLimit");
+    registerPredefinedNamedCallback(l, "OnDepoLimitDelete");
+    registerPredefinedNamedCallback(l, "OnAccountPosition");
+    registerPredefinedNamedCallback(l, "OnNegDeal");
+    registerPredefinedNamedCallback(l, "OnNegTrade");
+    registerPredefinedNamedCallback(l, "OnStopOrder");
+    registerPredefinedNamedCallback(l, "OnTransReply");
+    registerPredefinedNamedCallback(l, "OnParam");
+    registerPredefinedNamedCallback(l, "OnQuote");
+    registerPredefinedNamedCallback(l, "OnDisconnected");
+    registerPredefinedNamedCallback(l, "OnConnected");
+    registerPredefinedNamedCallback(l, "OnCleanUp");
+    registerPredefinedNamedCallback(l, "OnClose");
+    registerPredefinedNamedCallback(l, "OnStop");
     lua_register(l, "main", mainTrampoline);
     return 0;
 }
