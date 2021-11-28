@@ -26,7 +26,7 @@
 ... и ответа:
 
 ```json
-{"id":2,"type":"ans","data":{'method': 'return', 'result': ['PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,']}}
+{"id":2,"type":"ans","data":{"method": "return", "result": ["PSAU,SMAL,INDX,TQBR,TQOB,TQIF,TQTF,TQOD,CETS,CROSSRATE,SPBFUT,SPBOPT,USDRUB,RTSIDX,REPORT,REPORTFORTS,TQTD,SPBXM,EQRP_INFO,TQTE,TQIE,TQPI,FQBR,FQDE,QT_EQ,QT_BN,EES_CETS,SPBDE,TQFD,TQFE,TQCB,TQOE,TQRD,TQUD,TQED,TQIR,TQIU,"]}}
 ```
 
 На прикладном уровне обычно (но не обязательно) присутствует поле method. Для низкоуровневого апи (прямого маппинга а апи луа) там есть следующие методы:
@@ -43,7 +43,7 @@
 {"id":3,"type":"req","data":{"method":"invoke","function":"CreateDataSource","arguments":["TQBR","SBER",5]}}
 ```
 ```json
-{"id":3,"type":"ans","data":{'method': 'return', 'result': [4]}}
+{"id":3,"type":"ans","data":{"method": "return", "result": [4]}}
 ```
 ```json
 {"id":4,"type":"req","data":{"method":"invoke","object":4,"function":"SetUpdateCallback","arguments":[{"type":"callable","function":"sberUpdated"}]}}
