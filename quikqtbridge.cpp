@@ -71,7 +71,9 @@ void QuikQtBridge::setRecentStack(Qt::HANDLE ctid, lua_State *l)
 
 void QuikQtBridge::callbackRequest(QString name, const QVariantList &args, QVariant &vres)
 {
-    //qDebug() << "callbackRequest:" << name;
+#ifdef QT_DEBUG
+    qDebug() << "callbackRequest:" << name;
+#endif
     if(m_handlers.contains(name))
     {
         m_handlers.value(name)->callbackRequest(name, args, vres);

@@ -53,11 +53,17 @@ class JsonProtocolHandler:
 
     def reqArrived(self, id, data):
         print("REQ {:d}:".format(id))
-        print(data)
+        strdata = str(data)
+        if len(strdata) > 100:
+            strdata = strdata[:100] + '...'
+        print(strdata)
 
     def ansArrived(self, id, data):
         print("ANS {:d}:".format(id))
-        print(data)
+        strdata = str(data)
+        if len(strdata) > 100:
+            strdata = strdata[:100] + '...'
+        print(strdata)
 
     def processBuffer(self):
         try:
@@ -184,6 +190,12 @@ class QuikConnectorTest(JsonProtocolHandler):
         self.setUpdCBReqId = None
         self.updCBInstalled = False
         self.updCnt = 0
+        self.subsReqId = None
+        self.subsInstalled = False
+        self.subsCnt = 0
+        self.subqReqId = None
+        self.subqInstalled = False
+        self.subqCnt = 0
         self.closeDsMsgId = None
 
     def nextStep(self):
@@ -199,18 +211,34 @@ class QuikConnectorTest(JsonProtocolHandler):
                     self.createDs()
             elif not self.updCBInstalled:
                 self.setDsUpdateCallback()
-            elif self.updCnt >= 10:
+            elif not self.subqInstalled:
+                self.subscribeQuotes()
+            elif not self.subsInstalled:
+                self.subscribeParams()
+            elif self.updCnt >= 10 and self.subsCnt >= 10 and self.subqCnt >= 10:
                 if self.closeDsMsgId is None:
                     self.closeDs()
 
     def reqArrived(self, id, data):
         super().reqArrived(id, data)
         if data["method"] == 'invoke':
-            if data["function"] == 'sberUpdated':
+            if data["function"] == 'siUpdated':
                 idx = data["arguments"][0]
-                ans = {"method": "return", "result": self.sberUpdated(idx)}
+                ans = {"method": "return", "result": self.siUpdated(idx)}
                 self.sendAns(id, ans)
-
+        if data["method"] == 'paramChange':
+            pname = data["param"]
+            sec = data["security"]
+            val = float(data["value"])
+            print("{}.{}:{}".format(sec, pname, val))
+            self.subsCnt += 1
+        if data["method"] == 'quotesChange':
+            cls = data["class"]
+            sec = data["security"]
+            bids = int(float(data["quotes"]["bid_count"]))
+            asks = int(float(data["quotes"]["offer_count"]))
+            print("{}.{}: {}/{}".format(cls, sec, bids, asks))
+            self.subqCnt += 1
 
     def ansArrived(self, id, data):
         super().ansArrived(id, data)
@@ -226,8 +254,7 @@ class QuikConnectorTest(JsonProtocolHandler):
             print("hello sent")
         elif id == self.setUpdCBReqId:
             print("update handler installed")
-        else:
-            self.updCnt += 1
+        # else:
             # self.end()
 
     def sayHello(self):
@@ -243,24 +270,37 @@ class QuikConnectorTest(JsonProtocolHandler):
 
     def createDs(self):
         self.msgId += 1
-        self.sendReq(self.msgId, {"method": "invoke", "function": "CreateDataSource", "arguments": ["TQBR", "SBER", 5]})
+        self.sendReq(self.msgId, {"method": "invoke", "function": "CreateDataSource", "arguments": ["SPBFUT", "SiH3", 5]})
         self.createDsReqId = self.msgId
 
     def setDsUpdateCallback(self):
         self.msgId += 1
-        self.sendReq(self.msgId, {"method": "invoke", "object": self.ds, "function": "SetUpdateCallback", "arguments": [{"type": "callable", "function": "sberUpdated"}]})
+        self.sendReq(self.msgId, {"method": "invoke", "object": self.ds, "function": "SetUpdateCallback", "arguments": [{"type": "callable", "function": "siUpdated"}]})
         self.setUpdCBReqId = self.msgId
         self.updCBInstalled = True
+
+    def subscribeParams(self):
+        self.msgId += 1
+        self.sendReq(self.msgId, {"method": "SubscribeParamChanges", "class": "SPBFUT", "security": "SiH3", "param": "LAST"})
+        self.subsReqId = self.msgId
+        self.subsInstalled = True
+
+    def subscribeQuotes(self):
+        self.msgId += 1
+        self.sendReq(self.msgId, {"method": "SubscribeQuotes", "class": "SPBFUT", "security": "SiH3"})
+        self.subqReqId = self.msgId
+        self.subqInstalled = True
 
     def closeDs(self):
         self.msgId += 1
         self.sendReq(self.msgId, {"method": "invoke", "object": self.ds, "function": "Close", "arguments": []})
         self.closeDsMsgId = self.msgId
 
-    def sberUpdated(self, index):
-        print("sberUpdated:", index)
+    def siUpdated(self, index):
+        print("siUpdated:", index)
         req = {"method": "invoke", "object": self.ds, "function": "C", "arguments": [index]}
         self.msgId += 1
+        self.updCnt += 1
         self.sendReq(self.msgId, req)
         return True
 
@@ -270,7 +310,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 # Connect the socket to the port where the server is listening
-server_address = ('localhost', 57777)
+server_address = ('192.168.0.107', 57777)
 # server_address = ('10.211.55.21', 62787)
 # server_address = ('37.193.88.181', 57578)
 print('connecting to %s port %d' % server_address)
@@ -285,3 +325,4 @@ while not phandler.weEnded:
         phandler.nextStep()
 
 print("finished")
+breakpoint()

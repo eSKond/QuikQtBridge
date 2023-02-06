@@ -7,6 +7,8 @@
 #include <QStringList>
 #include <QMap>
 #include <QEventLoop>
+#include <QFile>
+#include <QTextStream>
 #include <QMutex>
 #include <QWaitCondition>
 #include "jsonprotocolhandler.h"
@@ -16,6 +18,7 @@
 #define FASTCALLBACK_TIMEOUT_SEC    5
 
 class FastCallbackRequestEventLoop;
+class BridgeTCPServer;
 struct ConnectionData
 {
     int outMsgId;
@@ -26,12 +29,14 @@ struct ConnectionData
     bool versionSent;
     QList<int> objRefs;
     FastCallbackRequestEventLoop *fcbWaitResult;
+    BridgeTCPServer *srv;
     ConnectionData()
         : outMsgId(0),
           proto(nullptr),
           peerProtocolVersion(0),
           versionSent(false),
-          fcbWaitResult(nullptr)
+          fcbWaitResult(nullptr),
+          srv(nullptr)
     {}
     ~ConnectionData();
 };
@@ -117,6 +122,8 @@ private:
     QList<ConnectionData *> m_connections;
     QStringList activeCallbacks;
     QString logPathPrefix;
+    QFile *logf;
+    QTextStream *logts;
 
     //cache
     QStringList secClasses;
@@ -149,7 +156,7 @@ private slots:
     void serverError(QAbstractSocket::SocketError err);
     //void debugLog(QString msg);
 
-    void fastCallbackRequest(ConnectionData *cd, QString fname, QVariantList args);
+    void fastCallbackRequest(ConnectionData *cd, int oid, QString fname, QVariantList args);
 
     void secParamsUpdate(QString cls, QString sec);
     void secQuotesUpdate(QString cls, QString sec);
@@ -161,18 +168,20 @@ signals:
 class FastCallbackRequestEventLoop
 {
 public:
-    FastCallbackRequestEventLoop(ConnectionData *rcd, QString rfname);
+    FastCallbackRequestEventLoop(ConnectionData *rcd, int oid, QString rfname, BridgeTCPServer *s);
     QVariant sendAndWaitResult(BridgeTCPServer *server, const QVariantList &args);
 
-    void fastCallbackRequestSent(ConnectionData *acd, QString afname, int aid);
+    void fastCallbackRequestSent(ConnectionData *acd, int oid, QString afname, int aid);
     void fastCallbackReturnArrived(ConnectionData *acd, int aid, QVariant res);
     void connectionDataDeleted(ConnectionData *dcd);
 private:
     ConnectionData *cd;
     QString funName;
+    int objId;
     int id;
     QVariant result;
     QMutex *waitMux;
+    BridgeTCPServer *srv;
 };
 
 #endif // BRIDGETCPSERVER_H

@@ -13,7 +13,9 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
     if(!pathPart.endsWith(QDir::separator()))
         pathPart += QDir::separator();
     QString jsonPath = scriptPath.replace(scriptPath.length() - ext.length(), ext.length(), QString("json"));
+#ifdef QT_DEBUG
     qDebug() << "Json config path is" << jsonPath;
+#endif
     QFile jfile(jsonPath);
     if(jfile.open(QIODevice::ReadOnly))
     {
@@ -25,7 +27,9 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
             foreach (QVariant v, vlist)
             {
                 allowedIPs.append(v.toString());
+#ifdef QT_DEBUG
                 qDebug() << v.toString();
+#endif
             }
         }
         if(jdoc.object().contains("exchangeLogPrefix"))

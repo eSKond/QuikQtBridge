@@ -127,11 +127,11 @@ bool registerNamedCallback(QString cbName)
 {
     Qt::HANDLE ctid;
     lua_State *recentStack = getRecentStack(&ctid);
-    qDebug() << "register named callback:" << cbName;
+    //qDebug() << "register named callback:" << cbName;
     if(recentStack)
     {
         int i=findJumpTableSlotForNamedCallback(cbName);
-        qDebug() << "jumptable slot found:" << i;
+        //qDebug() << "jumptable slot found:" << i;
         if(i<0)
         {
             qDebug() << "No more free callback slots. Can't register" << cbName;
@@ -407,8 +407,9 @@ void pushVariantToLuaStack(lua_State *l, QVariant val, QString caller)
         break;
     }
     case QVariant::String:
-    {
+    {        
         QString v = val.toString();
+        //qDebug() << "push string arg:" << v;
         lua_pushstring(l, v.toLocal8Bit().data());
         break;
     }
@@ -452,9 +453,7 @@ void pushVariantToLuaStack(lua_State *l, QVariant val, QString caller)
     default:
         if(val.canConvert<BridgeCallableObject>())
         {
-            if(caller.isEmpty())
-                qDebug() << "Callable object sent from lua?!";
-            else
+            if(!caller.isEmpty())
             {
                 BridgeCallableObject fcb = val.value<BridgeCallableObject>();
                 int cbi=registerFastCallback(fcb.handler, caller, fcb.data);
@@ -465,6 +464,8 @@ void pushVariantToLuaStack(lua_State *l, QVariant val, QString caller)
                     lua_pushcfunction(l, jumpTable[cbi].callback);
                 }
             }
+            else
+                qDebug() << "Callable object sent from lua?!";
         }
         else
             lua_pushnil(l);
@@ -501,6 +502,7 @@ bool getQuikVariable(QString varname, QVariant &res)
 
 bool invokeQuik(QString method, const QVariantList &args, QVariantList &res, QString &errMsg)
 {
+    //qDebug() << "invokeQuik:" << method;
     lua_State *recentStack = getRecentStack();
     int top = lua_gettop(recentStack);
     lua_getglobal(recentStack, method.toLocal8Bit().data());
@@ -699,7 +701,7 @@ static int universalCallbackHandler(JumpTableItem *jitem, lua_State *l)
     QVariantList lv;
     QVariantMap mv;
     int i;
-    qDebug() << "universalCallbackHandler: start";
+    //qDebug() << "universalCallbackHandler: start";
     int top = lua_gettop(l);
     for(i = 1; i <= top; i++)
     {

@@ -335,6 +335,7 @@ void JsonProtocolHandler::logOutgoing(const QByteArray &msg)
 
 void JsonProtocolHandler::readyRead()
 {
+    //qDebug() << "JsonProtocolHandler::readyRead()";
     if(!socketValid() || !socket->bytesAvailable())
         return;
     if(peerEnded)
