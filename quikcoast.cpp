@@ -264,16 +264,22 @@ static int extractValueFromLuaStack(lua_State *l, int sid, QVariant &sVal, QVari
     case LUA_TNUMBER:
     {
         double v = lua_tonumber(l, sid);
+        QString sv = QString::fromLocal8Bit(lua_tostring(l, sid));
+        //qDebug() << QString("read number: double=%1, string=%2").arg(v, 0, 'f').arg(sv);
         resType = 0;
-        if(v==(int)v)
+        if(sv.indexOf('.') < 0)
         {
-            //qDebug() << "int";
-            sVal = QVariant((int)v);
+            qint64 bigint = (qint64)v;
+            if(QString("%1").arg(bigint) == sv)
+                sVal = QVariant(bigint);
+            else
+                sVal = sv;
+            //qDebug() << "double" << v << "is recognized as int" << sVal;
         }
         else
         {
-            //qDebug() << "double";
             sVal = QVariant(v);
+            //qDebug() << "double" << v << "is kept as double" << sVal;
         }
         break;
     }
@@ -431,6 +437,8 @@ void pushVariantToLuaStack(lua_State *l, QVariant val, QString caller)
             QVariant v;
             k=ti.key();
             v=ti.value();
+            //QString logstr = QString("Field %1 type is %2 = %3").arg(k, QString::fromLocal8Bit(v.typeName()), v.toString());
+            //qDebug() << logstr;
             lua_pushstring(l, k.toLocal8Bit().data());
             pushVariantToLuaStack(l, v, caller);
             lua_settable(l, -3);
@@ -714,11 +722,11 @@ static int universalCallbackHandler(JumpTableItem *jitem, lua_State *l)
         {
             if(vtp==1)
             {
-                args.insert(args.length(), lv);
+                args.insert(args.length(), QVariant(lv));
             }
             else
             {
-                args.insert(args.length(), mv);
+                args.insert(args.length(), QVariant(mv));
             }
         }
     }

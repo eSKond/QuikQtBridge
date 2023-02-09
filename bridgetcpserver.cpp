@@ -926,13 +926,13 @@ void BridgeTCPServer::secParamsUpdate(QString cls, QString sec)
 void BridgeTCPServer::secQuotesUpdate(QString cls, QString sec)
 {
     sendStdoutLine(QString("BridgeTCPServer::secQuotesUpdate(%1, %2)").arg(cls, sec));
-    bool needStop = true;
+    //bool needStop = true;
     SecSubs *s = paramSubscriptions.findSecuritySubscriptions(cls, sec);
     if(s)
     {
         if(!s->quoteConsumers.isEmpty())
         {
-            needStop = false;
+            //needStop = false;
             QVariantList args, res;
             args << cls << sec;
             qqBridge->invokeMethod("getQuoteLevel2", args, res, this);
