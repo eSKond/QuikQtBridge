@@ -48,7 +48,7 @@ void BridgeTCPServer::setDebugLogPathPrefix(QString lpp)
 {
     if(!lpp.isEmpty())
     {
-        QString logPath = lpp + "DEBUG.log";
+        QString logPath = lpp + ".log";
         QFile *tmpf=new QFile(logPath);
         if(tmpf->open(QIODevice::WriteOnly | QIODevice::Text))
         {
