@@ -14,6 +14,7 @@ int qtMain(int argc, char *argv[])
     BridgeTCPServer server;
     server.setAllowedIPs(cfgrdr.getAllowedIPs());
     server.setLogPathPrefix(cfgrdr.getLogPathPrefix());
+    server.setDebugLogPathPrefix(cfgrdr.getDebugLogPathPrefix());
     qDebug() << "start listening on " << cfgrdr.getHost() << ":" << cfgrdr.getPort();
     if(server.listen(cfgrdr.getHost(), cfgrdr.getPort()))
         qDebug() << "Server started on:" << server.serverAddress().toString() << ":" << server.serverPort();
