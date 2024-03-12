@@ -320,7 +320,7 @@ void BridgeTCPServer::processLoadClassSecuritiesRequest(ConnectionData *cd, int 
         return;
     }
     sendStdoutLine(QString("BridgeTCPServer::processLoadClassSecuritiesRequest(%1)").arg(id));
-    QString cls = jobj.value("class").toString().toUpper();
+    QString cls = jobj.value("class").toString();
     cacheSecClasses();
     if(!secClasses.contains(cls, Qt::CaseInsensitive))
     {
@@ -445,7 +445,7 @@ void BridgeTCPServer::processUnsubscribeParamChangesRequest(ConnectionData *cd, 
         return;
     }
     sendStdoutLine(QString("BridgeTCPServer::processUnsubscribeParamChangesRequest(%1)").arg(id));
-    QString cls = jobj.value("class").toString().toUpper();
+    QString cls = jobj.value("class").toString();
     cacheSecClasses();
     if(!secClasses.contains(cls, Qt::CaseInsensitive))
     {
@@ -457,13 +457,13 @@ void BridgeTCPServer::processUnsubscribeParamChangesRequest(ConnectionData *cd, 
         sendError(cd, id, 13, "'security' must be specified in unsubscribeParamChanges", true);
         return;
     }
-    QString sec = jobj.value("security").toString().toUpper();
+    QString sec = jobj.value("security").toString();
     if(!jobj.contains("param"))
     {
         sendError(cd, id, 14, "'param' must be specified in unsubscribeParamChanges", true);
         return;
     }
-    QString par = jobj.value("param").toString().toUpper();
+    QString par = jobj.value("param").toString();
     sendStdoutLine(QString("Try delete subscription to %1/%2/%3").arg(cls, sec, par));
     paramSubscriptions.delConsumer(cd, cls, sec, par);
     if(paramSubscriptions.findParamSubscriptions(cls, sec, par))
@@ -544,7 +544,7 @@ void BridgeTCPServer::processUnsubscribeQuotesRequest(ConnectionData *cd, int id
         sendError(cd, id, 19, "'class' must be specified in unsubscribeQuotes", true);
         return;
     }
-    QString cls = jobj.value("class").toString().toUpper();
+    QString cls = jobj.value("class").toString();
     cacheSecClasses();
     if(!secClasses.contains(cls, Qt::CaseInsensitive))
     {
@@ -556,7 +556,7 @@ void BridgeTCPServer::processUnsubscribeQuotesRequest(ConnectionData *cd, int id
         sendError(cd, id, 21, "'security' must be specified in unsubscribeQuotes", true);
         return;
     }
-    QString sec = jobj.value("security").toString().toUpper();
+    QString sec = jobj.value("security").toString();
     paramSubscriptions.delQuotesConsumer(cd, cls, sec);
     SecSubs *s = paramSubscriptions.findSecuritySubscriptions(cls, sec);
     if(!s || s->quoteConsumers.isEmpty())
