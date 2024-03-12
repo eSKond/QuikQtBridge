@@ -12,6 +12,7 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
     QString pathPart = fi.path();
     if(!pathPart.endsWith(QDir::separator()))
         pathPart += QDir::separator();
+
     QString jsonPath = scriptPath.replace(scriptPath.length() - ext.length(), ext.length(), QString("json"));
 #ifdef QT_DEBUG
     qDebug() << "Json config path is" << jsonPath;
@@ -36,6 +37,11 @@ ServerConfigReader::ServerConfigReader(QString scriptPath)
         {
             QString prefix = jdoc.object().value("exchangeLogPrefix").toString();
             logPathPrefix = pathPart+prefix;
+        }
+        if(jdoc.object().contains("debugLogPrefix"))
+        {
+            QString prefix = jdoc.object().value("debugLogPrefix").toString();
+            debugLogPathPrefix = pathPart+prefix;
         }
         if(jdoc.object().contains("host"))
         {
