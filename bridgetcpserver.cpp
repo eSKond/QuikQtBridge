@@ -42,10 +42,13 @@ void BridgeTCPServer::setAllowedIPs(const QStringList &aips)
 void BridgeTCPServer::setLogPathPrefix(QString lpp)
 {
     logPathPrefix = lpp;
-#ifdef QT_DEBUG
-    if(!logPathPrefix.isEmpty())
+}
+
+void BridgeTCPServer::setDebugLogPathPrefix(QString lpp)
+{
+    if(!lpp.isEmpty())
     {
-        QString logPath = logPathPrefix + "DEBUG.log";
+        QString logPath = lpp + "DEBUG.log";
         QFile *tmpf=new QFile(logPath);
         if(tmpf->open(QIODevice::WriteOnly | QIODevice::Text))
         {
@@ -55,7 +58,6 @@ void BridgeTCPServer::setLogPathPrefix(QString lpp)
         else
             delete tmpf;
     }
-#endif
 }
 
 void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QVariant &vres)
@@ -462,13 +464,18 @@ void BridgeTCPServer::processUnsubscribeParamChangesRequest(ConnectionData *cd, 
         return;
     }
     QString par = jobj.value("param").toString().toUpper();
+    sendStdoutLine(QString("Try delete subscription to %1/%2/%3").arg(cls, sec, par));
     paramSubscriptions.delConsumer(cd, cls, sec, par);
-    if(!paramSubscriptions.findParamSubscriptions(cls, sec, par))
+    if(paramSubscriptions.findParamSubscriptions(cls, sec, par))
+        sendStdoutLine(QString("There are some consumers subscribed to %1/%2/%3. Param left in DB").arg(cls, sec, par));
+    else
     {
         QVariantList args, res;
         args << cls << sec << par;
         qqBridge->invokeMethod("CancelParamRequest", args, res, this);
-        if(!res[0].toBool())
+        if(res[0].toBool())
+            sendStdoutLine("CancelParamRequest returned true");
+        else
             sendStderrLine("CancelParamRequest returned false");
     }
     QJsonObject usubsRes
@@ -1076,6 +1083,8 @@ bool ParamSubscriptionsDb::delConsumer(ConnectionData *cd, QString cls, QString 
     QMutexLocker locker(&mutex);
     if(classes.contains(cls))
     {
+        if(cd && cd->srv)
+            cd->srv->sendStdoutLine(QString("ParamSubscriptionsDb::delConsumer found class %1 in subscriptions").arg(cls));
         if(classes.value(cls)->delConsumer(cd, sec, param))
             delete classes.take(cls);
     }
@@ -1181,6 +1190,8 @@ bool ClsSubs::delConsumer(ConnectionData *cd, QString sec, QString param)
     QMutexLocker locker(&mutex);
     if(securities.contains(sec))
     {
+        if(cd && cd->srv)
+            cd->srv->sendStdoutLine(QString("ClsSubs::delConsumer found security %1 in subscriptions").arg(sec));
         if(securities.value(sec)->delConsumer(cd, param))
             delete securities.take(sec);
     }
@@ -1286,6 +1297,8 @@ bool SecSubs::delConsumer(ConnectionData *cd, QString param)
     QMutexLocker locker(&mutex);
     if(params.contains(param))
     {
+        if(cd && cd->srv)
+            cd->srv->sendStdoutLine(QString("SecSubs::delConsumer found param %1 in subscriptions").arg(param));
         if(params.value(param)->delConsumer(cd))
             delete params.take(param);
     }
@@ -1328,6 +1341,7 @@ void SecSubs::addQuotesConsumer(ConnectionData *cd, int id)
 
 bool SecSubs::delQuotesConsumer(ConnectionData *cd)
 {
+    cd->srv->sendStdoutLine(QString("SecSubs#%1::delQuotesConsumer()").arg(this->secName));
     QMutexLocker locker(&mutex);
     quoteConsumers.remove(cd);
     return (params.isEmpty() && quoteConsumers.isEmpty());
@@ -1343,6 +1357,7 @@ void ParamSubs::addConsumer(ConnectionData *cd, int id)
 
 bool ParamSubs::delConsumer(ConnectionData *cd)
 {
+    cd->srv->sendStdoutLine(QString("ParamSubs#%1::delConsumer()").arg(this->param));
     QMutexLocker locker(&mutex);
     consumers.remove(cd);
     return consumers.isEmpty();

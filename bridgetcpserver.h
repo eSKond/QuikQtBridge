@@ -110,6 +110,7 @@ public:
     ~BridgeTCPServer();
     void setAllowedIPs(const QStringList &aips);
     void setLogPathPrefix(QString lpp);
+    void setDebugLogPathPrefix(QString lpp);
 
     virtual void callbackRequest(QString name, const QVariantList &args, QVariant &vres);
     virtual void fastCallbackRequest(void *data, const QVariantList &args, QVariant &res);
