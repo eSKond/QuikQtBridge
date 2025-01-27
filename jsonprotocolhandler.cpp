@@ -207,10 +207,9 @@ void JsonProtocolHandler::processBuffer()
     bool in_string = false;
     bool in_esc = false;
     int brace_nesting_level = 0;
-
     for(i=0; i<incommingBuf.length(); i++)
     {
-        const char curr_ch = incommingBuf[i];
+        const char curr_ch = incommingBuf[i];        
 
         if(curr_ch == '"' && !in_esc)
         {
@@ -221,7 +220,9 @@ void JsonProtocolHandler::processBuffer()
         if(!in_string)
         {
             if(curr_ch == '{')
+            {
                 brace_nesting_level++;
+            }
             else if(curr_ch == '}')
             {
                 brace_nesting_level--;
@@ -231,7 +232,9 @@ void JsonProtocolHandler::processBuffer()
                     if(incommingBuf.length() == i+1)
                         incommingBuf.clear();
                     else
+                    {
                         incommingBuf = incommingBuf.mid(i+1);
+                    }
                     i=-1;
                     in_string = false;
                     in_esc = false;
@@ -320,7 +323,7 @@ void JsonProtocolHandler::logIncoming(const QByteArray &msg)
     if(!logts)
         return;
     *logts << Qt::endl << "<--" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << Qt::endl;
-    *logts << QString::fromLocal8Bit(msg);
+    *logts << QString::fromLocal8Bit(msg) << Qt::endl;
     logts->flush();
 }
 
@@ -329,7 +332,7 @@ void JsonProtocolHandler::logOutgoing(const QByteArray &msg)
     if(!logts)
         return;
     *logts << Qt::endl << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss") << "-->" << Qt::endl;
-    *logts << QString::fromLocal8Bit(msg);
+    *logts << QString::fromLocal8Bit(msg) << Qt::endl;
     logts->flush();
 }
 
@@ -353,7 +356,14 @@ void JsonProtocolHandler::readyRead()
     QByteArray chunk = socket->readAll();
     logIncoming(chunk);
     incommingBuf.append(chunk);
-    processBuffer();
+    int clen = incommingBuf.length();
+    int plen = 0;
+    while(clen != plen)
+    {
+        processBuffer();
+        plen = clen;
+        clen = incommingBuf.length();
+    }
 }
 
 void JsonProtocolHandler::errorThunk(QAbstractSocket::SocketError err)

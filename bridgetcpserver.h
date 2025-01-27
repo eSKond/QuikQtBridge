@@ -51,6 +51,9 @@ struct ParamSubs
     ParamSubs(QString pname) : param(pname){}
     void addConsumer(ConnectionData *cd, int id);
     bool delConsumer(ConnectionData *cd);
+    bool hasConsumer(ConnectionData *cd);
+    QList<ConnectionData *> consumersList();
+    int getSubscriptionId(ConnectionData *cd);
 };
 
 struct SecSubs
@@ -58,7 +61,8 @@ struct SecSubs
     QString secName;
     QMap<QString, ParamSubs *> params;
     QMap<ConnectionData *, int> quoteConsumers;
-    QMutex mutex;
+    QMutex pmutex;
+    QMutex qmutex;
     SecSubs(QString sec) : secName(sec){}
     ~SecSubs();
     void addConsumer(ConnectionData *cd, QString param, int id);
@@ -67,6 +71,10 @@ struct SecSubs
     ParamSubs *findParamSubscriptions(QString param);
     void addQuotesConsumer(ConnectionData *cd, int id);
     bool delQuotesConsumer(ConnectionData *cd);
+    bool hasQuotesConsumer(ConnectionData *cd = nullptr);
+    QStringList getParamsList();
+    QList<ConnectionData *> getQuotesConsumersList();
+    int getQuotesSubscriptionId(ConnectionData *cd);
 };
 
 struct ClsSubs
@@ -102,12 +110,16 @@ private:
     QMap<QString, ClsSubs *> classes;
 };
 
+void sendStdoutLine(QString line);
+void sendStderrLine(QString line);
+
 class BridgeTCPServer : public QTcpServer, public QuikCallbackHandler
 {
     Q_OBJECT
 public:
     BridgeTCPServer(QObject *parent = nullptr);
     ~BridgeTCPServer();
+    static BridgeTCPServer *getGlobalServer(){return g_server;}
     void setAllowedIPs(const QStringList &aips);
     void setLogPathPrefix(QString lpp);
     void setDebugLogPathPrefix(QString lpp);
@@ -118,6 +130,7 @@ public:
     virtual void sendStdoutLine(QString line);
     virtual void sendStderrLine(QString line);
 private:
+    static BridgeTCPServer * g_server;
     QStringList m_allowedIps;
     bool ipAllowed(QString ip);
     QList<ConnectionData *> m_connections;
@@ -157,7 +170,7 @@ private slots:
     void serverError(QAbstractSocket::SocketError err);
     //void debugLog(QString msg);
 
-    void fastCallbackRequest(ConnectionData *cd, int oid, QString fname, QVariantList args);
+    void fastCallbackRequestHandler(ConnectionData *cd, int oid, QString fname, QVariantList args);
 
     void secParamsUpdate(QString cls, QString sec);
     void secQuotesUpdate(QString cls, QString sec);

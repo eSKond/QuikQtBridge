@@ -57,6 +57,6 @@ target_include_directories(${QuikQtPluginLib} PRIVATE ${CMAKE_CURRENT_BINARY_DIR
 #target_include_directories(${QuikQtPluginLib} PRIVATE "c:/Work/lua-5.3.6_Win64_dll16_lib/include")
 #target_link_directories(${QuikQtPluginLib} PRIVATE "c:/Work/lua-5.3.6_Win64_dll16_lib/fromquik")
 #target_link_libraries(${QuikQtPluginLib} PRIVATE lua53)
-target_include_directories(${QuikQtPluginLib} PRIVATE "c:/Work/lua-5.4.2_Win64_dll16_lib/include")
-target_link_directories(${QuikQtPluginLib} PRIVATE "c:/Work/lua-5.4.2_Win64_dll16_lib/fromquik")
+target_include_directories(${QuikQtPluginLib} PRIVATE "D:/Work/Trade/lua-5.4.2-win64-libs/include")
+target_link_directories(${QuikQtPluginLib} PRIVATE "D:/Work/Trade/lua-5.4.2-win64-libs/fromquik")
 target_link_libraries(${QuikQtPluginLib} PRIVATE lua54)
