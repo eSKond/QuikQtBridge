@@ -30,6 +30,7 @@ struct ConnectionData
     QList<int> objRefs;
     FastCallbackRequestEventLoop *fcbWaitResult;
     BridgeTCPServer *srv;
+    Qt::HANDLE threadId;    //to be used in safe requests
     ConnectionData()
         : outMsgId(0),
           proto(nullptr),
@@ -144,6 +145,9 @@ private:
     void cacheSecClasses();
 
     ParamSubscriptionsDb paramSubscriptions;
+
+    void safeSendReq(ConnectionData *cd, int id, QJsonValue data, bool showInLog=true);
+    void safeSendAns(ConnectionData *cd, int id, QJsonValue data, bool showInLog=true);
 
     ConnectionData *getCDByProtoPtr(JsonProtocolHandler *p);
     void sendError(ConnectionData *cd, int id, int errcode, QString errmsg, bool log=false);

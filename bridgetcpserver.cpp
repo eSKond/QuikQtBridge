@@ -81,7 +81,8 @@ void BridgeTCPServer::callbackRequest(QString name, const QVariantList &args, QV
         if(cd->callbackSubscriptions.contains(name))
         {
             int id = cd->callbackSubscriptions.value(name);
-            cd->proto->sendReq(id, cbCall, false);
+            // qDebug() << "Сall safeSendReq from BridgeTCPServer::callbackRequest";
+            safeSendReq(cd, id, cbCall, false);
         }
     }
     if(name == "OnStop")
@@ -197,6 +198,40 @@ void BridgeTCPServer::cacheSecClasses()
     }
 }
 
+void BridgeTCPServer::safeSendReq(ConnectionData *cd, int id, QJsonValue data, bool showInLog)
+{
+    if(cd->threadId == QThread::currentThreadId())
+    {
+        // qDebug() << "Direct call sendReq from BridgeTCPServer::safeSendReq";
+        cd->proto->sendReq(id, data, showInLog);
+    }
+    else
+    {
+        // qDebug() << "Queued call sendReq from BridgeTCPServer::safeSendReq";
+        QMetaObject::invokeMethod(cd->proto, "sendReq", Qt::QueuedConnection,
+                                  Q_ARG(int, id),
+                                  Q_ARG(QJsonValue, data),
+                                  Q_ARG(bool, showInLog));
+    }
+}
+
+void BridgeTCPServer::safeSendAns(ConnectionData *cd, int id, QJsonValue data, bool showInLog)
+{
+    if(cd->threadId == QThread::currentThreadId())
+    {
+        // qDebug() << "Direct call sendAns from BridgeTCPServer::safeSendAns";
+        cd->proto->sendAns(id, data, showInLog);
+    }
+    else
+    {
+        // qDebug() << "Queued call sendAns from BridgeTCPServer::safeSendAns";
+        QMetaObject::invokeMethod(cd->proto, "sendAns", Qt::QueuedConnection,
+                                  Q_ARG(int, id),
+                                  Q_ARG(QJsonValue, data),
+                                  Q_ARG(bool, showInLog));
+    }
+}
+
 ConnectionData *BridgeTCPServer::getCDByProtoPtr(JsonProtocolHandler *p)
 {
     int i;
@@ -221,7 +256,21 @@ void BridgeTCPServer::sendError(ConnectionData *cd, int id, int errcode, QString
     if(log)
         sendStderrLine(errmsg);
     if(cd)
-        cd->proto->sendAns(id, errObj, log);
+    {
+        if(cd->threadId == QThread::currentThreadId())
+        {
+            // qDebug() << "Direct call sendAns from BridgeTCPServer::sendError";
+            cd->proto->sendAns(id, errObj, log);
+        }
+        else
+        {
+            // qDebug() << "Queued call sendAns from BridgeTCPServer::sendError";
+            QMetaObject::invokeMethod(cd->proto, "sendAns", Qt::QueuedConnection,
+                                      Q_ARG(int, id),
+                                      Q_ARG(QJsonValue, errObj),
+                                      Q_ARG(bool, log));
+        }
+    }
 }
 
 void BridgeTCPServer::processExtendedRequests(ConnectionData *cd, int id, QString method, QJsonObject &jobj)
@@ -604,6 +653,7 @@ void BridgeTCPServer::incomingConnection(qintptr handle)
     }
     ConnectionData *cd = new ConnectionData();
     cd->srv = this;
+    cd->threadId = thh;
     cd->peerIp = sock->peerAddress().toString();
     cd->proto = new JsonProtocolHandler(sock, logPath, this);
     connect(cd->proto, SIGNAL(reqArrived(int,QJsonValue)), this, SLOT(protoReqArrived(int,QJsonValue)));
@@ -681,7 +731,8 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
             {"method", "registered"},
             {"callback", callbackName}
         };
-        cd->proto->sendAns(id, regRes, false);
+        // qDebug() << "Сall safeSendAns from BridgeTCPServer::protoReqArrived 1";
+        safeSendAns(cd, id, regRes, false);
         return;
     }
     if(method == "invoke")
@@ -756,7 +807,8 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
             {"method", "return"},
             {"result", QJsonArray::fromVariantList(res)}
         };
-        cd->proto->sendAns(id, invRes, false);
+        // qDebug() << "Сall safeSendAns from BridgeTCPServer::protoReqArrived 2";
+        safeSendAns(cd, id, invRes, false);
         return;
     }
     if(method == "delete")
@@ -773,7 +825,8 @@ void BridgeTCPServer::protoReqArrived(int id, QJsonValue data)
                 {"object", objId}
             };
             cd->objRefs.removeAll(objId);
-            cd->proto->sendAns(id, delRes, false);
+            // qDebug() << "Сall safeSendAns from BridgeTCPServer::protoReqArrived 3";
+            safeSendAns(cd, id, delRes, false);
             return;
         }
         else
@@ -829,7 +882,17 @@ void BridgeTCPServer::protoVerArrived(int ver)
         cd->peerProtocolVersion = ver;
         if(!cd->versionSent)
         {
-            cd->proto->sendVer(BRIDGE_SERVER_PROTOCOL_VERSION);
+            if(cd->threadId == QThread::currentThreadId())
+            {
+                // qDebug() << "Direct call sendVer from BridgeTCPServer::protoVerArrived";
+                cd->proto->sendVer(BRIDGE_SERVER_PROTOCOL_VERSION);
+            }
+            else
+            {
+                // qDebug() << "Queued call sendVer from BridgeTCPServer::protoVerArrived";
+                QMetaObject::invokeMethod(cd->proto, "sendVer", Qt::QueuedConnection,
+                                          Q_ARG(int, BRIDGE_SERVER_PROTOCOL_VERSION));
+            }
             cd->versionSent = true;
         }
     }
@@ -889,7 +952,8 @@ void BridgeTCPServer::fastCallbackRequestHandler(ConnectionData *cd, int oid, QS
             invReq["object"] = oid;
         int id = ++(cd->outMsgId);
         cd->fcbWaitResult->fastCallbackRequestSent(cd, oid, fname, id);
-        cd->proto->sendReq(id, invReq, false);
+        // qDebug() << "Сall safeSendReq from BridgeTCPServer::fastCallbackRequestHandler";
+        safeSendReq(cd, id, invReq, false);
     }
 }
 
