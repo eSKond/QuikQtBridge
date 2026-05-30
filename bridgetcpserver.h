@@ -10,6 +10,8 @@
 #include <QFile>
 #include <QTextStream>
 #include <QMutex>
+#include <QSemaphore>
+#include <QRecursiveMutex>
 #include <QWaitCondition>
 #include "jsonprotocolhandler.h"
 #include "quikqtbridge.h"
@@ -48,7 +50,7 @@ struct ParamSubs
     QString param;
     QVariant value;
     QMap<ConnectionData *, int> consumers;
-    QMutex mutex;
+    // QMutex mutex;
     ParamSubs(QString pname) : param(pname){}
     void addConsumer(ConnectionData *cd, int id);
     bool delConsumer(ConnectionData *cd);
@@ -62,8 +64,8 @@ struct SecSubs
     QString secName;
     QMap<QString, ParamSubs *> params;
     QMap<ConnectionData *, int> quoteConsumers;
-    QMutex pmutex;
-    QMutex qmutex;
+    // QMutex pmutex;
+    // QMutex qmutex;
     SecSubs(QString sec) : secName(sec){}
     ~SecSubs();
     void addConsumer(ConnectionData *cd, QString param, int id);
@@ -82,7 +84,7 @@ struct ClsSubs
 {
     QString className;
     QMap<QString, SecSubs *> securities;
-    QMutex mutex;
+    // QMutex mutex;
     ClsSubs(QString cls) : className(cls){}
     ~ClsSubs();
     void addConsumer(ConnectionData *cd, QString sec, QString param, int id);
@@ -106,8 +108,11 @@ public:
     SecSubs *findSecuritySubscriptions(QString cls, QString sec);
     void addQuotesConsumer(ConnectionData *cd, QString cls, QString sec, int id);
     bool delQuotesConsumer(ConnectionData *cd, QString cls, QString sec);
+
+    QRecursiveMutex *getMutex() { return &mutex; }
+
 private:
-    QMutex mutex;
+    QRecursiveMutex mutex;
     QMap<QString, ClsSubs *> classes;
 };
 
@@ -198,7 +203,7 @@ private:
     int objId;
     int id;
     QVariant result;
-    QMutex *waitMux;
+    QSemaphore waitSem;       //QMutex *waitMux;
     BridgeTCPServer *srv;
 };
 
